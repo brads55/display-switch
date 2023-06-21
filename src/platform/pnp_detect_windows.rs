@@ -32,7 +32,7 @@ impl PnPDetectWindows {
     pub fn new(callback: Box<dyn UsbCallback>) -> Self {
         let mut pnp_detect = Self {
             callback,
-            current_devices: Self::read_device_list().unwrap_or_default(),
+            current_devices: HashSet::new(),
             hwnd: std::ptr::null_mut(),
         };
         pnp_detect.create_window();
@@ -90,6 +90,10 @@ impl PnPDetectWindows {
                 let create_struct = lparam as *mut winapi::um::winuser::CREATESTRUCTW;
                 let window_state_ptr = create_struct.as_ref().unwrap().lpCreateParams;
                 SetWindowLongPtrW(hwnd, GWLP_USERDATA, window_state_ptr as isize);
+
+                // Get initial list of devices, ensuring handle devices on startup
+                let window_state: &mut Self = (window_state_ptr as *mut PnPDetectWindows).as_mut().unwrap();
+                window_state.handle_hotplug_event();
             }
             WM_DESTROY => {
                 PostQuitMessage(0);
